@@ -1,0 +1,15 @@
+{
+  "name": "whack-a-claude",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pixel-retro whack-a-mole that pops up when Claude Code is thinking.",
+  "bin": {
+    "whack-a-claude-tui": "bin/game-tui.js"
+  },
+  "scripts": {
+    "tui": "node bin/game-tui.js"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81"
+  }
+}
