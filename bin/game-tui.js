@@ -276,13 +276,16 @@ function renderField() {
     }
   }
 
+  const ROW_H = 4;     // 3 sprite rows + 1 dirt row (with number embedded)
+  const TOP_PAD = 1;   // start cells one row down so we have grass at top
+
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
       const i = row * 3 + col;
       const c = cells[i];
       const sprite = spriteFor(c, now);
       const cellLeft = sideW + col * (cellW + gapW);
-      const cellTop  = row * 5;
+      const cellTop  = TOP_PAD + row * ROW_H;
 
       // Sprite (3 lines)
       for (let r = 0; r < 3; r++) {
@@ -294,17 +297,16 @@ function renderField() {
           }
         }
       }
-      // Dirt mound (line 3)
-      for (let cc = 0; cc < DIRT_LINE.length && cc < cellW; cc++) {
-        grid[cellTop + 3][cellLeft + cc] = { ch: DIRT_LINE[cc], col: C.dirt };
-      }
-      // Number label (line 4): "  [N]    "
-      const label = `   [${i + 1}]   `;
-      for (let cc = 0; cc < label.length && cc < cellW; cc++) {
-        const ch = label[cc];
-        if (ch !== ' ') {
-          grid[cellTop + 4][cellLeft + cc] = { ch, col: C.dim };
-        }
+      // Dirt mound with number embedded: "▟▓ N ▓▓▓▙" (9 wide)
+      const num = String(i + 1);
+      const dirtRow = `▟▓ ${num} ▓▓▓▙`;
+      for (let cc = 0; cc < dirtRow.length && cc < cellW; cc++) {
+        const ch = dirtRow[cc];
+        const isNum = ch === num;
+        grid[cellTop + 3][cellLeft + cc] = {
+          ch,
+          col: isNum ? C.gold : C.dirt
+        };
       }
     }
   }
@@ -316,8 +318,7 @@ function renderField() {
     const row = Math.floor(p.cell / 3);
     const col = p.cell % 3;
     const cellLeft = sideW + col * (cellW + gapW);
-    const cellTop  = row * 5;
-    const popRow = Math.max(0, cellTop - Math.floor(t * 3));
+    const popRow = Math.max(0, (1 + row * 4) - Math.floor(t * 3));
     const popCol = cellLeft + 2;
     const text = p.text;
     for (let cc = 0; cc < text.length && popCol + cc < W; cc++) {
