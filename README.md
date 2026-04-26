@@ -1,82 +1,61 @@
 # whack-a-claude
 
-A pixel-retro whack-a-mole that auto-opens in your browser when Claude Code is taking a while to respond. Hit regular moles for points, gold moles for bonus, and **don't hit the Claude moles** — they cost you 50.
+> **The arcade game that pops up when Claude is taking too long to think.**
 
-```
-+----------+----------+----------+
-|   60s    |   3x3    |   3 mole |
-|  round   |  grid    |   types  |
-+----------+----------+----------+
-```
+Claude takes more than 8 seconds? Game appears. Claude finishes? Game closes itself. Hit moles for points, hit gold for bonus, **don't hit the Claudes**.
 
-## How it works
+<p align="center">
+  <img src="assets/screenshots/browser.png" width="48%" alt="Browser mode" />
+  <img src="assets/screenshots/terminal.png" width="48%" alt="Terminal mode" />
+</p>
+<p align="center"><sub><b>Browser mode</b> &nbsp;·&nbsp; <b>Terminal mode</b></sub></p>
 
-- `UserPromptSubmit` hook → starts a tiny local Node HTTP server (port 7654) and schedules the game to open in your browser after **8 seconds**.
-- `Stop` hook (Claude finished) → cancels the pending open. Fast responses → no game. Slow responses → game pops up.
-- Once open, the game polls `/status`. When Claude finishes, an overlay appears and the tab tries to auto-close after 10s.
+## Two ways to play
 
-Requires `node` (which Claude Code already needs).
+| | |
+|---|---|
+| 🌐 **Browser** | Auto-opens via Claude Code hooks. Pixel SVG sprites, squish animations, arcade chrome. |
+| 💻 **Terminal** | Standalone TUI in `blessed`. Mouse + keyboard. Never leaves the shell. Run `npm run tui`. |
 
-## Install
-
-### Option A — as a Claude Code plugin
+## Install — as a Claude Code plugin
 
 ```bash
-git clone <this-repo> ~/.claude-plugins/whack-a-claude
+git clone https://github.com/ChenJiangxi/whack-a-claude ~/.claude-plugins/whack-a-claude
 claude plugin install ~/.claude-plugins/whack-a-claude
 ```
 
-If your Claude Code build doesn't have `claude plugin`, fall back to Option B.
+Next time Claude takes >8s to respond, the game opens. Auto-closes when Claude is done.
 
-### Option B — wire up the hooks manually
+## Scoring
 
-Drop `whack-a-claude/` anywhere stable, then add to `~/.claude/settings.json`:
+| target | points |
+|---|---|
+| 🟫 brown mole | **+10** |
+| 🟨 gold mole | **+30** |
+| 🟧 Claude | **−50** *(I warned you.)* |
 
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      { "type": "command", "command": "/absolute/path/to/whack-a-claude/bin/on-prompt.sh" }
-    ],
-    "Stop": [
-      { "type": "command", "command": "/absolute/path/to/whack-a-claude/bin/on-stop.sh" }
-    ]
-  }
-}
-```
+60-second round. Difficulty ramps from chill to frantic. Best score persists.
 
-The scripts work without `${CLAUDE_PLUGIN_ROOT}` — they fall back to a path computed from their own location.
+## How it works
+
+`UserPromptSubmit` hook → schedules a delayed game-open. `Stop` hook → cancels it.
+Fast turns never see the game; slow ones do.
 
 ## Configure
 
-| Env var       | Default | Meaning                                       |
-| ------------- | ------- | --------------------------------------------- |
-| `WHACK_DELAY` | `8`     | Seconds to wait before opening the game       |
-| `WHACK_PORT`  | `7654`  | Port for the local server                     |
+```bash
+WHACK_DELAY=8     # seconds before the game pops
+WHACK_PORT=7654   # local server port (browser mode)
+```
 
 ## Try it without Claude
 
 ```bash
-WHACK_DATA_DIR=/tmp/whack node bin/server.js
-open http://127.0.0.1:7654/
+npm install
+npm start         # browser mode at http://127.0.0.1:7654
+npm run tui       # terminal mode
 ```
 
-To simulate Claude finishing while the game is open:
+## License
 
-```bash
-echo '{"state":"done","since":0}' > /tmp/whack/status.json
-```
-
-## Uninstall
-
-- Remove the hook entries from `settings.json`, or `claude plugin uninstall whack-a-claude`.
-- `pkill -f 'whack-a-claude.*server.js'` to stop the server.
-- `rm -rf ~/.claude/plugins/data/whack-a-claude` to clear state.
-
-## Scoring
-
-| Mole         | Points |
-| ------------ | ------ |
-| Brown (mole) | +10    |
-| Gold         | +30    |
-| Claude       | -50    |
+MIT
