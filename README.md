@@ -70,10 +70,18 @@ Fast turn: cancel fires before the open does, no game. Slow turn: game opens, po
 
 ## Configure
 
-```bash
-WHACK_DELAY=8     # seconds before the game pops
-WHACK_PORT=7654   # local server port
-```
+| env var | default | what it does |
+| --- | --- | --- |
+| `WHACK_MODE` | `browser` | `browser` · `tui` · `off` (kill switch) |
+| `WHACK_DELAY` | `8` | seconds Claude has to finish before the game pops |
+| `WHACK_DISABLE` | `0` | set to `1` to disable hooks entirely (same as `MODE=off`) |
+| `WHACK_PORT` | `7654` | local server port (browser mode only) |
+
+**Trigger condition** — game opens when Claude takes longer than `WHACK_DELAY` seconds. Cancelled if Claude finishes first.
+
+**Stay-quiet condition** — game stays away when `WHACK_MODE=off` or `WHACK_DISABLE=1`.
+
+**Mode condition** — `WHACK_MODE=tui` launches the terminal version in a tmux split-pane (or a new Terminal.app window if not in tmux). Requires tmux for the cleanest experience.
 
 ## Run standalone (no Claude required)
 

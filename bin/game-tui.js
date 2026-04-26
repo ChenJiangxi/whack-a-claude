@@ -13,6 +13,10 @@ const UP_HARD_MIN = 700,     UP_HARD_MAX = 1300;
 const HIT_FLASH_MS = 220;
 const POP_TTL = 700;
 const TICK_MS = 60;
+const STATUS_POLL_MS = 700;
+const CLAUDE_DONE_AUTO_CLOSE_MS = 10000;
+
+const STATUS_FILE = process.env.WHACK_STATUS_FILE || '';
 
 const SCORES = { mole: 10, gold: 30, claude: -50 };
 const WEIGHTS = { mole: 65, gold: 10, claude: 25 };
@@ -116,6 +120,7 @@ let endsAt = Date.now() + ROUND_SEC * 1000;
 let lastSpawnAt = 0;
 let nextSpawnIn = SPAWN_EASY_MAX;
 let gameOver = false;
+let claudeDoneAt = 0; // ms timestamp when status flipped to "done", 0 = not yet
 
 function pickType() {
   const total = Object.values(WEIGHTS).reduce((a, b) => a + b, 0);
@@ -337,9 +342,22 @@ function renderCells() {
 }
 
 function renderOverlay() {
-  if (!gameOver) { overlay.hide(); return; }
+  if (!gameOver && !claudeDoneAt) { overlay.hide(); return; }
   overlay.show();
   overlay.setFront();
+  if (claudeDoneAt) {
+    const remaining = Math.max(
+      0,
+      Math.ceil((CLAUDE_DONE_AUTO_CLOSE_MS - (Date.now() - claudeDoneAt)) / 1000)
+    );
+    overlay.setContent(
+      `\n${tag(C.coral, "CLAUDE'S DONE")}\n\n` +
+      `Score so far: ${tag(C.gold, score)}\n\n` +
+      `Auto-closing in ${tag(C.gold, remaining + 's')}\n\n` +
+      `${tag(C.dim, 'Esc to close now  ·  K to keep playing')}`
+    );
+    return;
+  }
   const newBest = score >= best && score > 0
     ? `\n${tag(C.gold, '★ NEW BEST! ★')}\n`
     : '\n';
@@ -362,11 +380,28 @@ function render() {
   screen.render();
 }
 
+function checkClaudeStatus() {
+  if (!STATUS_FILE || claudeDoneAt) return;
+  try {
+    const raw = fs.readFileSync(STATUS_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    if (data.state === 'done') {
+      claudeDoneAt = Date.now();
+      saveBest(best);
+    }
+  } catch { /* file missing or mid-write — try again next tick */ }
+}
+
 function tick() {
   const now = Date.now();
   if (!gameOver && now >= endsAt) {
     gameOver = true;
     saveBest(best);
+  }
+  if (claudeDoneAt && now - claudeDoneAt >= CLAUDE_DONE_AUTO_CLOSE_MS) {
+    saveBest(best);
+    screen.destroy();
+    process.exit(0);
   }
   expire(now);
   trySpawn(now);
@@ -391,6 +426,7 @@ screen.key(['C-c', 'escape'], () => {
   process.exit(0);
 });
 screen.key(['r'], () => { if (gameOver) reset(); });
+screen.key(['k'], () => { if (claudeDoneAt) { claudeDoneAt = 0; render(); } });
 
 const KEY_MAP = {
   q: 0, w: 1, e: 2,
@@ -402,4 +438,5 @@ for (const [k, i] of Object.entries(KEY_MAP)) {
 }
 
 setInterval(tick, TICK_MS);
+if (STATUS_FILE) setInterval(checkClaudeStatus, STATUS_POLL_MS);
 render();
