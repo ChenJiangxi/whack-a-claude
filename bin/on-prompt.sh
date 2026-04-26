@@ -6,6 +6,8 @@
 set -u
 
 # ---- switches -----------------------------------------------------------
+# Sentinel: `touch ~/.whack-off` to disable, `rm ~/.whack-off` to re-enable.
+[ -f "$HOME/.whack-off" ] && exit 0
 # WHACK_MODE: browser | tui | off (default: browser)
 MODE="${WHACK_MODE:-browser}"
 [ "$MODE" = "off" ] && exit 0

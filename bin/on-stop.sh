@@ -4,6 +4,9 @@
 # does NOT pop up if Claude responded fast enough.
 set -u
 
+# Sentinel: `touch ~/.whack-off` to disable, `rm ~/.whack-off` to re-enable.
+[ -f "$HOME/.whack-off" ] && exit 0
+
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/plugins/data/whack-a-claude}"
 STATUS_FILE="$DATA_DIR/status.json"
 LAUNCH_PID_FILE="$DATA_DIR/launch.pid"

@@ -77,9 +77,11 @@ Fast turn: cancel fires before the open does, no game. Slow turn: game opens, po
 | `WHACK_DISABLE` | `0` | set to `1` to disable hooks entirely (same as `MODE=off`) |
 | `WHACK_PORT` | `7654` | local server port (browser mode only) |
 
+**Quick on/off without editing env** — `touch ~/.whack-off` to silence both hooks instantly; `rm ~/.whack-off` to bring the game back. No restart needed.
+
 **Trigger condition** — game opens when Claude takes longer than `WHACK_DELAY` seconds. Cancelled if Claude finishes first.
 
-**Stay-quiet condition** — game stays away when `WHACK_MODE=off` or `WHACK_DISABLE=1`.
+**Stay-quiet condition** — game stays away when `~/.whack-off` exists, or `WHACK_MODE=off`, or `WHACK_DISABLE=1`.
 
 **Mode condition** — `WHACK_MODE=tui` launches the terminal version in a tmux split-pane (or a new Terminal.app window if not in tmux). Requires tmux for the cleanest experience.
 
