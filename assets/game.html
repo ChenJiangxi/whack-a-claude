@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Whack-a-Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="game">
+    <h1>WHACK-A-CLAUDE</h1>
+
+    <div class="hud">
+      <div class="stat" data-stat="score"><span class="label">SCORE</span><span class="value">0</span></div>
+      <div class="stat" data-stat="time"><span class="label">TIME</span><span class="value">60</span></div>
+      <div class="stat" data-stat="high"><span class="label">BEST</span><span class="value">0</span></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <p class="legend">
+      <span class="brown">&#9632;</span> mole +10 &nbsp;
+      <span class="gold">&#9632;</span> gold +30 &nbsp;
+      <span class="claude">&#9632;</span> claude &minus;50
+    </p>
+  </main>
+
+  <div class="overlay" id="game-over">
+    <div class="card">
+      <h2>TIME'S UP</h2>
+      <p>Final score: <strong class="final-score">0</strong></p>
+      <p class="hint">Best: <strong class="hi">0</strong></p>
+      <button class="replay">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="claude-done">
+    <div class="card">
+      <h2>CLAUDE&#39;S DONE</h2>
+      <p>Score so far: <strong class="done-score">0</strong></p>
+      <p class="hint">Auto-closing in <strong class="countdown">10</strong>s.</p>
+      <button class="close-btn">CLOSE</button>
+      <button class="keep-btn">KEEP PLAYING</button>
+    </div>
+  </div>
+
+  <script src="/game.js"></script>
+</body>
+</html>

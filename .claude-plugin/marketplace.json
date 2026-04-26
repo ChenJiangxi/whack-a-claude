@@ -1,0 +1,14 @@
+{
+  "name": "whack-local",
+  "owner": {
+    "name": "kailaili8991"
+  },
+  "plugins": [
+    {
+      "name": "whack-a-claude",
+      "source": "./",
+      "description": "Pixel-retro whack-a-mole that auto-opens when Claude takes a while to respond.",
+      "version": "0.1.0"
+    }
+  ]
+}
