@@ -5,8 +5,11 @@ const path = require('path');
 const os = require('os');
 
 const ROUND_SEC = 60;
-const SPAWN_MIN = 500, SPAWN_MAX = 1100;
-const UP_MIN = 900, UP_MAX = 1700;
+// Difficulty ramps from "easy" → "hard" linearly across the round.
+const SPAWN_EASY_MIN = 1100, SPAWN_EASY_MAX = 1900;
+const SPAWN_HARD_MIN = 280,  SPAWN_HARD_MAX = 700;
+const UP_EASY_MIN = 1700,    UP_EASY_MAX = 2400;
+const UP_HARD_MIN = 700,     UP_HARD_MAX = 1300;
 const HIT_FLASH_MS = 220;
 const POP_TTL = 700;
 const TICK_MS = 60;
@@ -24,7 +27,8 @@ const C = {
   white:   '#f5f0ff',
   red:     '#ff5050',
   dim:     '#888',
-  dirt:    '#7a5230'
+  dirt:    '#7a5230',
+  dirtDk:  '#3d2810'
 };
 
 const KEYS = [
@@ -33,44 +37,55 @@ const KEYS = [
   ['z', 'x', 'c']
 ];
 
+// All sprites are 11 chars wide × 4 rows tall so cells stay perfectly aligned.
 const SPRITES = {
   mole: {
     color: C.brown,
     art: [
-      ' ▟▀▀▀▀▀▙ ',
-      ' █ o.o █ ',
-      '  ▀▀∪▀▀  '
+      '  ▄▀▀▀▀▀▄  ',
+      '  █ o o █  ',
+      '  █  ▽  █  ',
+      '   ▀▀▀▀▀   '
     ]
   },
   gold: {
     color: C.gold,
     art: [
-      ' ▟▀★▀★▀▙ ',
-      ' █ o.o █ ',
-      '  ▀▀∪▀▀  '
+      '  ▄★▀▀▀★▄  ',
+      '  █ ◉ ◉ █  ',
+      '  █  ▽  █  ',
+      '   ▀▀▀▀▀   '
     ]
   },
   claude: {
     color: C.coral,
     art: [
-      ' ▟█▀▀▀█▙ ',
-      ' █ C.C █ ',
-      '  ▀▀∪▀▀  '
+      '  ▟▀▀▀▀▀▙  ',
+      '  █ c c █  ',
+      '  ╲  ω  ╱  ',
+      '   ▀▀▀▀▀   '
     ]
   }
 };
 
+// Just-emerging frame — eyes peek out at the bottom row above the dirt.
 const RISING_ART = [
-  '         ',
-  '         ',
-  '  ▄o.o▄  '
+  '           ',
+  '           ',
+  '           ',
+  '   ▄o o▄   '
 ];
 
+// Squish frame after a successful hit.
 const HIT_ART = [
-  '  ▄▄▄▄▄  ',
-  ' █ x.x █ ',
-  '         '
+  '           ',
+  '   ▄▄▄▄▄   ',
+  '  █ x x █  ',
+  '   ▀▀▀▀▀   '
 ];
+
+// Always-rendered dirt mound at the bottom of every cell.
+const HOLE_ART = ' ▓▓▓▓▓▓▓▓▓ ';
 
 const tag = (col, txt) => `{${col}-fg}${txt}{/}`;
 
@@ -99,7 +114,7 @@ let score = 0;
 let best = loadBest();
 let endsAt = Date.now() + ROUND_SEC * 1000;
 let lastSpawnAt = 0;
-let nextSpawnIn = SPAWN_MIN;
+let nextSpawnIn = SPAWN_EASY_MAX;
 let gameOver = false;
 
 function pickType() {
@@ -112,6 +127,23 @@ function pickType() {
 }
 
 const rand = (min, max) => min + Math.random() * (max - min);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// 0 at start of round, 1 at end. Used to interpolate spawn / up-time ranges.
+function progress(now) {
+  const elapsed = ROUND_SEC - Math.max(0, (endsAt - now) / 1000);
+  return Math.max(0, Math.min(1, elapsed / ROUND_SEC));
+}
+
+function difficulty(now) {
+  const p = progress(now);
+  return {
+    spawnMin: lerp(SPAWN_EASY_MIN, SPAWN_HARD_MIN, p),
+    spawnMax: lerp(SPAWN_EASY_MAX, SPAWN_HARD_MAX, p),
+    upMin:    lerp(UP_EASY_MIN,    UP_HARD_MIN,    p),
+    upMax:    lerp(UP_EASY_MAX,    UP_HARD_MAX,    p),
+  };
+}
 
 function trySpawn(now) {
   if (gameOver) return;
@@ -121,12 +153,13 @@ function trySpawn(now) {
   if (empties.length === 0) return;
   const i = empties[Math.floor(Math.random() * empties.length)];
   const t = pickType();
+  const d = difficulty(now);
   cells[i].type = t;
   cells[i].spawnedAt = now;
-  cells[i].expiresAt = now + rand(UP_MIN, UP_MAX);
+  cells[i].expiresAt = now + rand(d.upMin, d.upMax);
   cells[i].hitAt = 0;
   lastSpawnAt = now;
-  nextSpawnIn = rand(SPAWN_MIN, SPAWN_MAX);
+  nextSpawnIn = rand(d.spawnMin, d.spawnMax);
 }
 
 function expire(now) {
@@ -171,13 +204,14 @@ function spriteFor(c, now) {
     return { art: HIT_ART, color: SPRITES[c.type].color };
   }
   const age = now - c.spawnedAt;
-  if (age < 140) return { art: RISING_ART, color: SPRITES[c.type].color };
+  if (age < 160) return { art: RISING_ART, color: SPRITES[c.type].color };
   return { art: SPRITES[c.type].art, color: SPRITES[c.type].color };
 }
 
 const screen = blessed.screen({
   smartCSR: true,
   fullUnicode: true,
+  mouse: true,
   title: 'whack-a-claude'
 });
 
@@ -220,6 +254,7 @@ const gameArea = blessed.box({
 const cellBoxes = [];
 for (let r = 0; r < 3; r++) {
   for (let c = 0; c < 3; c++) {
+    const i = r * 3 + c;
     const key = KEYS[r][c].toUpperCase();
     const box = blessed.box({
       parent: gameArea,
@@ -233,12 +268,14 @@ for (let r = 0; r < 3; r++) {
       valign: 'middle',
       label: ` ${key} `,
       content: '',
+      mouse: true,
       style: {
         bg: C.grass,
         border: { fg: C.dirt },
         label: { fg: C.gold, bold: true, bg: C.grass }
       }
     });
+    box.on('click', () => { whack(i); render(); });
     cellBoxes.push(box);
   }
 }
@@ -271,7 +308,7 @@ function renderLegend() {
 }
 
 function renderHint() {
-  hint.setContent('Q W E / A S D / Z X C  ·  R replay  ·  Esc quit');
+  hint.setContent('keys QWE/ASD/ZXC · click cells · R replay · Esc quit');
 }
 
 function renderCells() {
@@ -279,16 +316,20 @@ function renderCells() {
   for (let i = 0; i < 9; i++) {
     const c = cells[i];
     const sprite = spriteFor(c, now);
-    let bodyLines = [];
+    const bodyLines = [];
+    // Sprite area: always 4 lines (blank when empty so cell layout is stable).
     if (sprite) {
-      bodyLines = sprite.art.map(l => tag(sprite.color, l));
+      for (const line of sprite.art) bodyLines.push(tag(sprite.color, line));
+    } else {
+      for (let k = 0; k < 4; k++) bodyLines.push(' '.repeat(11));
     }
+    // Dirt mound — always present at the bottom, anchors the visual.
+    bodyLines.push(tag(C.dirt, HOLE_ART));
+    // Score popup floats above the sprite for POP_TTL ms.
     if (c.poppedAt && c.popText) {
       const t = (now - c.poppedAt) / POP_TTL;
-      const popLine = tag(c.popColor, c.popText);
-      // Pop sits above sprite; for fade, drop it toward end of TTL
       if (t < 0.85) {
-        bodyLines = [popLine, ...bodyLines];
+        bodyLines.unshift(tag(c.popColor, c.popText));
       }
     }
     cellBoxes[i].setContent(bodyLines.join('\n'));
@@ -340,6 +381,7 @@ function reset() {
   score = 0;
   endsAt = Date.now() + ROUND_SEC * 1000;
   lastSpawnAt = 0;
+  nextSpawnIn = SPAWN_EASY_MAX;
   gameOver = false;
 }
 
