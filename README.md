@@ -16,9 +16,9 @@
 
 ---
 
-Claude taking more than 8 seconds to respond? A pixel-art whack-a-mole opens in your browser. Claude finishes? The game closes itself. Fast turns never see it. Slow turns become 60 seconds of moles, gold bonuses, and rogue Claudes you must absolutely **not** whack.
+Claude taking more than 8 seconds to respond? A small picker pops up — **Skip / TUI / Browser** — and the game opens in whatever you choose. Don't pick? It vanishes after 12s. Claude finishes mid-game? The game closes itself. Fast turns never see anything.
 
-Two modes — **browser** (the default, auto-launched by a Claude Code hook) and **terminal** (a full TUI that never leaves your shell).
+Two playable modes — **browser** (pixel-art HTML game) and **terminal** (full TUI in your shell).
 
 ## Install
 
@@ -62,26 +62,27 @@ Full-screen `blessed` TUI. Mouse and keyboard both work — `Q W E / A S D / Z X
 ## How it works
 
 ```
-UserPromptSubmit hook  →  status.json: "thinking"  +  schedule open in 8s
-Stop hook              →  status.json: "done"      +  cancel pending open
+UserPromptSubmit hook  →  status.json: "thinking"  +  schedule picker in 8s
+Stop hook              →  status.json: "done"      +  cancel pending picker/game
 ```
 
-Fast turn: cancel fires before the open does, no game. Slow turn: game opens, polls `/status`, shows a "Claude's done" overlay when Claude finishes and auto-closes after 10s.
+Fast turn: cancel fires before the picker does, you see nothing. Slow turn: native macOS dialog pops with **Skip / TUI / Browser**; pick one and the chosen game opens; ignore it for 12s and it dismisses itself. Game polls `/status`, shows a "Claude's done" overlay when Claude finishes, auto-closes after 10s.
 
 ## Configure
 
 | env var | default | what it does |
 | --- | --- | --- |
-| `WHACK_MODE` | `browser` | `browser` · `tui` · `off` (kill switch) |
-| `WHACK_DELAY` | `8` | seconds Claude has to finish before the game pops |
+| `WHACK_MODE` | `ask` | `ask` (per-turn picker) · `browser` (auto-open browser, no prompt) · `tui` (auto-open terminal, no prompt) · `off` (kill switch) |
+| `WHACK_DELAY` | `8` | seconds Claude has to finish before the picker appears |
+| `WHACK_ASK_TIMEOUT` | `12` | seconds the picker waits before auto-Skipping |
 | `WHACK_DISABLE` | `0` | set to `1` to disable hooks entirely (same as `MODE=off`) |
 | `WHACK_PORT` | `7654` | local server port (browser mode only) |
 
 **Quick on/off without editing env** — `touch ~/.whack-off` to silence both hooks instantly; `rm ~/.whack-off` to bring the game back. No restart needed.
 
-**Trigger condition** — game opens when Claude takes longer than `WHACK_DELAY` seconds. Cancelled if Claude finishes first.
+**Trigger condition** — picker appears when Claude takes longer than `WHACK_DELAY` seconds. Cancelled if Claude finishes first.
 
-**Stay-quiet condition** — game stays away when `~/.whack-off` exists, or `WHACK_MODE=off`, or `WHACK_DISABLE=1`.
+**Stay-quiet condition** — nothing pops when `~/.whack-off` exists, or `WHACK_MODE=off`, or `WHACK_DISABLE=1`. Set `WHACK_MODE=browser` or `tui` to skip the picker and auto-launch the same mode every time.
 
 **Mode condition** — `WHACK_MODE=tui` launches the terminal version in a tmux split-pane (or a new Terminal.app window if not in tmux). Requires tmux for the cleanest experience.
 
